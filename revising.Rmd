@@ -4,24 +4,315 @@ output: html_document
 date: "2024-12-27"
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+```{r}
+options(scipen = 1000000000)
+options(stringsAsFactors = F)
+set.seed(1009)
+library(readxl)
+library(dplyr)
+library(corrplot)
+library(corrr)
+library(RColorBrewer)
+library(psych)
+library(GGally)
+
+library(CBCgrps)
+library(tibble)
+library(ggrepel)
+
+library(ggplot2)
+library(hrbrthemes)
+library(ggpubr)
+
+library(caret)
+library(randomForest)
+library(pROC)
+library(e1071)
+library(kknn)
+library(adabag)
+packageVersion("caret")
+
 ```
 
-## R Markdown
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r correlation analysis, include=FALSE}
+setwd("C:/Users/JiefeiNiu/OneDrive - Helmholtz Zentrum München/project/project/pro/onlypro-final/revising")
+com_data <- read.csv("pheno_pro_2045.csv",check.names = FALSE)
+data <- read.csv(file = "pheno_11_pro_809.csv", row.names = 1, check.names = FALSE)
+data1 <- data.frame(row.names = com_data$zz_nr,
+                    BMI = com_data$u3tbmi,
+                    WHR = com_data$u3twhrat,
+                    WC = com_data$u3ttumf,
+                    BFP = com_data$u3tbfp_k,
+                    age = com_data$u3talteru,
+                    SBP = com_data$u3tsysmm,
+                    DBP = com_data$u3tdiamm,
+                    alcohol = com_data$u3talkkon,
+                    FPG = com_data$u3tglukfast_n,
+                    TG =  com_data$u3l_trin,
+                    HDL = com_data$u3l_hdln,
+                    LDL = com_data$u3l_ldln,
+                    TCHO = com_data$u3l_choln) # CRP = com_data$u3h_crp
+pro <- read.csv(file = "select_pro_agesex.csv", row.names = 1, check.names = FALSE)
+data2 <- pro[, -c(1:3)]
 
-```{r cars}
-summary(cars)
+r <- cor.result$r
+p <- cor.result$p
+#write.csv(r, file = "pheno_pro_correlation_R.csv")
+#write.csv(p, file = "pheno_pro_correlation_pvalue.csv")
+
+head(data2)
+#correlation in proteins and filter by 0.5
+a <- cor(data2)
+a[abs(a) > 0.5]
+cor.result <- corr.test(data2, data1, use = "pairwise.complete.obs", method = "spearman")
+
+
+p[ p >= (0.05)] <- NA
+rowSums(!is.na(p))
+colSums(!is.na(p))
+x <- data.frame(r[p < 0.05])
+r <- cor.result$r
+max(r)
+min(r)
+p <- cor.result$p
+
+#col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))(10) #"#EE9988", "#FFFFFF",
+col <- colorRampPalette(c("blue", "white", "red"))(10)
+#col <- colorRampPalette(c("darkred","white","midnightblue"))(10)
+dev.new()
+png("pheno_pro_cor_nocrp.png", width=27, height=21, units = "cm", res=600) 
+p <- cor.result$p
+corrplot(r, method = "square", p.mat = p, sig.level = 0.05,
+         insig = "blank", tl.col = "black", col =col, tl.cex = 1.5)
+dev.off()
+
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
+```{r MR}
+library(TwoSampleMR)
+library(MRInstruments)
+library(ggplot2)
+library(data.table)
+library(readr)
+set.seed(1234)
+
+rm(list = ls())
+###################prepare proteins GWAS data#######################
+folder_path <- "C:/Users/JiefeiNiu/Desktop/sun/"
+#folder_path <- "/home/ame/jiefei.niu/tools/project/pQTL/" #put in server
+
+# extract files' name
+file_names <- list.files(folder_path)[1]
+#file_names <- c(file_names[5])
+
+result_list <- list()
+for (file in file_names) {
+  file_path <- paste0("C:/Users/JiefeiNiu/Desktop/sun/", file)
+  data <- fread(file_path)
+  #p_value < 5e-08 or logpvalue >8
+  ex <- subset(data, p_value < 5e-08)
+  # add files name as a column
+  ex$FileName <- gsub(".tsv", "", file)
+  # put results in list
+  result_list[[file]] <- ex
+}
+
+#combine all res together
+colnames(data)
+head(data)
+result <- rbindlist(result_list)
+colnames(result)
+#save it
+#write.csv(result, file = "C:/project/pro/onlypro/result/mr/result.csv")
+#write.csv(result, file = "C:/project/pro/onlypro/result/mr/result_LGALS3BP.csv")
+
+
+###########################proteins lead to BMI###################################
+#Ferkingstad, E. et al. Large-scale integration of the plasma proteome with genetics and disease. 
+result <- read.csv("result.csv")
+#check data
+colnames(result)
+table(result$genename)
+head(result)
+#include 9 PROTEINS: A2M, APCS, ADIPOQ, AFM, APOD, AZGP1, CRP, S100A9, SERPINA6
+result <- subset(result, genename != "SERPINA6") #SERPINA6 cann't clumped
+exp_dat <- format_data(
+  result,
+  type = "exposure",
+  header = TRUE,
+  snp_col = "rsids",
+  beta_col = "Beta",
+  se_col = "SE",
+  pval_col = "Pval",
+  effect_allele_col = "effectAllele",
+  other_allele_col = "otherAllele",
+  ncase_col = "N",
+  id_col = "genename")
+
+#APOF "prot-a-133"; APOM "prot-a-136"; CFH "prot-a-520"; A2M 'prot-a-1781';
+#SERPINF1 "prot-a-2698"; 
+#put the id one by one and get the results
+exp_dat <- extract_instruments(outcomes = 'prot-a-133')
+exp_dat <- extract_instruments(outcomes = 'prot-a-136')
+exp_dat <- extract_instruments(outcomes = 'prot-a-520')
+exp_dat <- extract_instruments(outcomes = 'prot-a-1781')
+exp_dat <- extract_instruments(outcomes = 'prot-a-2698')
+
+snp_exp_dat <- clump_data(exp_dat, clump_kb = 10000, clump_r2 = 0.001,
+                          clump_p1 = 1, clump_p2 = 1, pop = "EUR")
+# outcomes data
+#BMI ebi-a-GCST90029007
+#obesity ebi-a-GCST001475
+out_dat <- extract_outcome_data(
+  snps = snp_exp_dat$SNP,
+  outcomes = 'ebi-a-GCST001475'
+)
+
+#harmonise data
+dat <- harmonise_data(
+  exposure_dat = snp_exp_dat, 
+  outcome_dat = out_dat)
+#write.csv(dat, file = "C:/project/pro/onlypro-final/result/mr/result_snps.csv")
+res <- mr(dat, method_list = c("mr_wald_ratio", "mr_ivw")) #"mr_egger_regression",
+res
+#Sensitivity analyses 
+#Heterogeneity statistics
+mr_heterogeneity(dat, method_list = c("mr_ivw", "mr_egger_regression"))
+mr_heterogeneity(dat, method_list = c("mr_ivw"))
+#可以挑出离群值
+#run_mr_presso(dat, NbDistribution = 3000)
+#Horizontal pleiotropy
+mr_pleiotropy_test(dat)
+
+#PLOT
+res_single=mr_singlesnp(dat)
+mr_forest_plot(res_single)
+
+mr_funnel_plot(singlesnp_results = res_single)
+mr_leaveoneout_plot(leaveoneout_results = mr_leaveoneout(dat))
+
+#write.csv(snp_exp_dat, file = "C:/project/pro/onlypro/result/mr/snp_exp_dat.csv")
+#write.csv(res, file = "C:/project/pro/onlypro/result/mr/res.csv")
+
+#from LGALS3BP to BMI
+result <- read.csv("result_LGALS3BP.csv")
+exp_dat <- format_data(
+  result,
+  type = "exposure",
+  header = TRUE,
+  snp_col = "rs_id",
+  beta_col = "beta",
+  se_col = "standard_error",
+  effect_allele_col = "effect_allele",
+  other_allele_col = "other_allele",
+  ncase_col = "n")
+
+snp_exp_dat <- clump_data(exp_dat, clump_kb = 10000, clump_r2 = 0.001,
+                          clump_p1 = 1, clump_p2 = 1, pop = "EUR")
+#write.csv(snp_exp_dat, file = "C:/project/pro/onlypro/result/mr/snp_exp_dat.csv")
+# outcomes data
+out_dat <- extract_outcome_data(
+  snps = snp_exp_dat$SNP,
+  outcomes = 'ebi-a-GCST90029007'
+)
+
+#harmonise data
+dat <- harmonise_data(
+  exposure_dat = snp_exp_dat, 
+  outcome_dat = out_dat)
+#write.csv(dat, file = "C:/project/pro/onlypro-final/result/mr/result_snps.csv")
+res <- mr(dat, method_list = c("mr_wald_ratio", "mr_ivw"))
+res
+#Sensitivity analyses 
+#Heterogeneity statistics
+mr_heterogeneity(dat, method_list = c("mr_ivw", "mr_egger_regression"))
+mr_heterogeneity(dat, method_list = c("mr_ivw"))
+#可以挑出离群值
+#run_mr_presso(dat, NbDistribution = 3000)
+#Horizontal pleiotropy
+mr_pleiotropy_test(dat)
+
+
+
+###########################BMI lead to proteins###################################
+#exposure
+exp_dat1 <-extract_instruments(outcomes = 'ebi-a-GCST90029007')
+snp_exp_dat1 <- clump_data(exp_dat1, clump_kb = 10000, clump_r2 = 0.001,
+                           clump_p1 = 1, clump_p2 = 1, pop = "EUR")
+#outcome
+#include 9 PROTEINS: A2M, APCS, ADIPOQ, AFM, APOD, AZGP1, CRP, S100A9, SERPINA6
+out_dat1 <- read_outcome_data(
+  snps = snp_exp_dat1$SNP,
+  filename = "C:/project/pro/onlypro-final/result/mr/result.csv",
+  sep = ",",
+  snp_col = "rsids",
+  beta_col = "Beta",
+  se_col = "SE",
+  pval_col = "Pval",
+  effect_allele_col = "effectAllele",
+  other_allele_col = "otherAllele",
+  ncase_col = "N",
+  id_col = "genename"
+)
+
+#harmonise data
+dat <- harmonise_data(
+  exposure_dat = snp_exp_dat1, 
+  outcome_dat = out_dat1)
+
+res <- mr(dat, method_list = c("mr_wald_ratio", "mr_ivw"))
+res
+#Sensitivity analyses 
+#Heterogeneity statistics
+mr_heterogeneity(dat, method_list = c("mr_ivw"))
+#可以挑出离群值
+#run_mr_presso(dat, NbDistribution = 3000)
+#Horizontal pleiotropy
+mr_pleiotropy_test(dat)
+
+#PLOT
+res_single=mr_singlesnp(dat)
+mr_forest_plot(res_single)
+
+mr_funnel_plot(singlesnp_results = res_single)
+mr_leaveoneout_plot(leaveoneout_results = mr_leaveoneout(dat))
+
+
+#directly find GWAS data from GWAS catalog
+#APOF "prot-a-133"; APOM "prot-a-136"; CFH "prot-a-520"; A2M 'prot-a-1781'
+out_dat1 <- extract_outcome_data(snps = snp_exp_dat1$SNP, outcomes = 'prot-a-133')
+out_dat1 <- extract_outcome_data(snps = snp_exp_dat1$SNP, outcomes = 'prot-a-136')
+out_dat1 <- extract_outcome_data(snps = snp_exp_dat1$SNP, outcomes = 'prot-a-520')
+out_dat1 <- extract_outcome_data(snps = snp_exp_dat1$SNP, outcomes = 'prot-a-1781')
+#harmonise data
+dat <- harmonise_data(
+  exposure_dat = snp_exp_dat1, 
+  outcome_dat = out_dat1)
+
+res <- mr(dat, method_list = c("mr_wald_ratio", "mr_ivw"))
+res
+#Sensitivity analyses 
+#Heterogeneity statistics
+mr_heterogeneity(dat, method_list = c("mr_ivw"))
+#可以挑出离群值
+#run_mr_presso(dat, NbDistribution = 3000)
+#Horizontal pleiotropy
+mr_pleiotropy_test(dat)
+
+#PLOT
+res_single=mr_singlesnp(dat)
+mr_forest_plot(res_single)
+
+mr_funnel_plot(singlesnp_results = res_single)
+mr_leaveoneout_plot(leaveoneout_results = mr_leaveoneout(dat))
+
+```
+
 
 ```{r pressure, echo=FALSE}
 plot(pressure)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
