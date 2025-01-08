@@ -164,8 +164,8 @@ exp_dat <- extract_instruments(outcomes = 'prot-a-2698')
 snp_exp_dat <- clump_data(exp_dat, clump_kb = 10000, clump_r2 = 0.001,
                           clump_p1 = 1, clump_p2 = 1, pop = "EUR")
 # outcomes data
-#BMI ebi-a-GCST90029007
-#obesity ebi-a-GCST001475
+#BMI ebi-a-GCST90029007  n:532,396	SNP:11,973,091
+#obesity ebi-a-GCST001475 n:13,848	SNP: 2,430,514
 out_dat <- extract_outcome_data(
   snps = snp_exp_dat$SNP,
   outcomes = 'ebi-a-GCST001475'
