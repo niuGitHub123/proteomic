@@ -178,7 +178,7 @@ shap.plots.force(shap_values)
 
 
 shap.plots.waterfall(shap_values[1]) # the firtst sample
-shap.plots.bar(shap_values, max_display=10)
+shap.plots.bar(shap_values, max_display=16) #summarize the effects of all the features
 shap.plots.heatmap(shap_values)
 shap.plots.force(explainer.expected_value,shap_values.values,shap_values.data)
 shap.plots.force(shap_values)
@@ -200,6 +200,81 @@ plt.show()
 plt.close() 
 
 
+#refrence the link: https://blog.csdn.net/sinat_26917383/article/details/115400327
+#reference the paper: https://www.nature.com/articles/s41591-023-02396-3 
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import shap
+import time
+import numba
+import sklearn.ensemble
+
+dt = pd.read_csv('C:/Users/JiefeiNiu/OneDrive - Helmholtz Zentrum München/project/project/pro/onlypro-final/revising/select_pro_agesex.csv')
+from sklearn.preprocessing import LabelEncoder
+dt.BMI
+dt
+dt = dt.drop(dt.columns[[0, 2, 3]], axis=1) #delete id, sex, age
+dt['BMI'] = dt['BMI'].astype('category')
+dt.head()
+np.random.seed(1009)
+
+from sklearn.model_selection import train_test_split
+X = dt.drop('BMI', axis=1)
+X = pd.get_dummies(X, drop_first=True)
+y = dt['BMI']
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=1009)
+#y_train = y_train.map({'Non_Obese': 0, 'Obese': 1})
+
+model = sklearn.ensemble.RandomForestClassifier(n_estimators=500, max_features=5, oob_score=True, random_state=1009)
+model.fit(X_train, y_train)
+
+from sklearn.metrics import accuracy_score, classification_report
+y_pred = model.predict(X_test) 
+accuracy = accuracy_score(y_test, y_pred) 
+report = classification_report(y_test, y_pred) 
+print(f'Accuracy: {accuracy}') 
+print(report)
+
+
+explainer = shap.TreeExplainer(model)
+shap_values_numpy = explainer.shap_values(X)
+shap_values_Explanation = explainer(X)
+
+shap_values = explainer(X)
+shap_values[0]
+
+
+shap.plots.waterfall(shap_values[0]) # the firtst sample
+shap.plots.bar(shap_values)
+shap.plots.heatmap(shap_values)
+shap.plots.force(explainer.expected_value,shap_values.values,shap_values.data)
+shap.plots.force(shap_values)
+
+
+shap.plots.waterfall(shap_values[1]) # the firtst sample
+shap.plots.bar(shap_values, max_display=16) #summarize the effects of all the features
+shap.plots.heatmap(shap_values)
+shap.plots.force(explainer.expected_value,shap_values.values,shap_values.data)
+shap.plots.force(shap_values) 
+
+
+# summarize the effects of all the features
+shap.plots.beeswarm(shap_values, max_display=16, color_bar=True, s=16, plot_size='auto',color_bar_label='Feature value')
+plt.close() 
+shap.plots.beeswarm(shap_values, max_display=16, show=False)
+plt.tick_params(axis='both', labelsize=12)
+colorbar = plt.gca().collections[-1].colorbar  # Get the color bar
+plt.savefig('C:/Users/JiefeiNiu/OneDrive - Helmholtz Zentrum München/project/project/pro/onlypro-final/revising/SHAP_beeswarm.png',dpi = 600, bbox_inches = 'tight', pad_inches=0.1)
+plt.show() 
+plt.close() 
+
+shap.plots.beeswarm(shap_values, max_display=28, show=False)
+plt.savefig('C:/Users/JiefeiNiu/OneDrive - Helmholtz Zentrum München/project/project/pro/onlypro-final/revising/SHAP_allbeeswarm.png',dpi = 600, bbox_inches = 'tight', pad_inches=0.1)
+plt.show() 
+plt.close() 
 
 
 
