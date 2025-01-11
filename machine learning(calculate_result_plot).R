@@ -15,7 +15,7 @@ set.seed(1009)
 #default is 500 trees
 randomForest_rf<-randomForest(BMI ~.,data = traindata, #BMI ~ . - age - sex
                               ntree = 500,
-                              mtry = 4,
+                              mtry = 5,
                               proximity = TRUE,
                               importance = TRUE)
 #model validation
