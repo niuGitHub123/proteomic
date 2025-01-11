@@ -210,6 +210,19 @@ plt.savefig('C:/Users/JiefeiNiu/OneDrive - Helmholtz Zentrum München/project/pr
 plt.show() 
 plt.close() 
 
+plt.close() 
+shap.plots.bar(shap_values, max_display=16, show=False)
+plt.tick_params(axis='both', labelsize=12)
+plt.savefig('C:/Users/JiefeiNiu/OneDrive - Helmholtz Zentrum München/project/project/pro/onlypro-final/revising/SHAP_barplot.png',dpi = 600, bbox_inches = 'tight', pad_inches=0.1)
+plt.show() 
+plt.close()
+
+plt.close() 
+shap.plots.heatmap(shap_values, max_display=16, show=False)
+plt.tick_params(axis='both', labelsize=12)
+plt.savefig('C:/Users/JiefeiNiu/OneDrive - Helmholtz Zentrum München/project/project/pro/onlypro-final/revising/SHAP_heatmap.png',dpi = 600, bbox_inches = 'tight', pad_inches=0.1)
+plt.show() 
+plt.close()
 
 ```
 
