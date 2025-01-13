@@ -27,7 +27,7 @@ packageVersion("caret")
 
 rm(list = ls())
 
-setwd("C:/project/pro/onlypro")
+setwd("C:/Users/JiefeiNiu/OneDrive - Helmholtz Zentrum München/project/project/pro/onlypro-final")
 #################phenotype preparation##############
 #load transcriptomics phenotype 1930
 pheno_pro_2132 <- read.csv("pheno_pro_2132.csv",check.names = FALSE)
@@ -94,7 +94,7 @@ continous <- clinic[,c("u3tbmiwho","u3talteru", "u3tgewi", "u3tgroe","u3talkkon"
 category <- clinic[,c("u3tbmiwho", "u3csex", "u3tcigreg_sf", "u3tphys",
                       "u3tdm110y15")]
 table1 <- twogrps(continous, gvar = "u3tbmiwho", norm.rd = 1, sk.rd =1 , cat.rd =1 ,
-                  p.rd =3,ShowStatistic = T,  pnormtest = 0)
+                  p.rd =3,ShowStatistic = T, skewvar = "u3l_trin", pnormtest = 0)
 print(table1$Table, quote = T)
 table2 <- twogrps(category, gvar = "u3tbmiwho", norm.rd = 1, sk.rd =1 , cat.rd =1 ,
                   p.rd =3,ShowStatistic = F,  pnormtest = 0)
