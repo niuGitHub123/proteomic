@@ -31,7 +31,6 @@ library(e1071)
 library(kknn)
 library(adabag)
 packageVersion("caret")
-
 ```
 
 
