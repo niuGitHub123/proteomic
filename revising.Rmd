@@ -6,6 +6,7 @@ date: "2024-12-27"
 
 rm(list = ls())
 ```{r libaries, include=FALSE}
+
 options(scipen = 1000000000)
 options(stringsAsFactors = F)
 set.seed(1009)
